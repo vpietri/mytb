@@ -9,19 +9,31 @@ $module (v$version)
 Global Commands:
   $script <command> [--force]
 ------------------------------
-  gignadd                       add modman files to .gitignore
-  modnew <pattern> <destdir>    extract modules files with the <pattern> to the directory <destdir> (optionnally, create the modman file)
+  modnew <pattern> <destdir>    extract modules files with the <pattern> to the directory <destdir> and create the modman file
   
-  status                         check for modman dir with standby files (equivalent to 'modman status')
+  mmgign                       add modman files to .gitignore
+  mmst                         check for modman dir with standby files (equivalent to 'modman status')
   
   --help             display this help message
-  --version          display the modman script's version  
-  --git              common git command
-  --sh               common sh command
+  --version          display the script's version  
+  --git              git command samples
+  --sh               sh command samples
 "
 gitresume="
 
 ------------------------------
+
+-- Configuration
+-- -- Ignore chmod
+git config core.fileMode false
+-- -- Add color
+git config --global color.ui true
+
+-- Common shortcut
+git config --global alias.co checkout
+git config --global alias.br branch
+git config --global alias.ci commit
+git config --global alias.st status
 
 -- Poser un tag
 git tag -a  -m 'Version '
@@ -45,9 +57,9 @@ git add . && git stash && git pull && git stash pop && git st
 
 
 -- Recherche de terme dans des fichier (ici SEARCH_TERM)
-find . -name "*" | xargs grep 'SEARCH_TERM' | sed "s/[^:]*:\s*//"
+find . -name \"*\" | xargs grep 'SEARCH_TERM' | sed \"s/[^:]*:\s*//\"
 
--- GIT: Recherche des fichiers supprimés et application de git rm
+-- Recherche des fichiers supprimés et application de git rm
 git st | grep delete | sed \"s/#\tdeleted:    //\" | xargs git rm
 
 ------------------------------
@@ -105,9 +117,9 @@ if [ "$1" = "--help" -o "$1" = "" ]; then
 elif [ "$1" = "--version" ]; then
   echo "$module, version: $version"; exit 0
 elif [ "$1" = "--git" ]; then
-  echo -e "$gitresume" | more; exit 0
+  echo -e "$gitresume"; exit 0
 elif [ "$1" = "--sh" ]; then
-  echo -e "$shresume" | more; exit 0
+  echo -e "$shresume"; exit 0
 fi
 
 
@@ -133,7 +145,7 @@ if [ "$1" = "modnew" ]; then
 fi
 
 ################################
-# modman tools
+# check modman context
 ################################
 # Find the .modman directory and store parent path in $root
 mm_not_found="Module Manager directory not found."
@@ -143,25 +155,18 @@ while ! [ -d $root/.modman ]; do
   cd .. || { echo -e "ERROR: Could not traverse up from $root\n$mm_not_found" && exit 1; }
   root=$(pwd)
 done
+
 mm=$root/.modman      # path to .modman
 
-
 ###############################
-# Handle "gignadd" command
-if [ "$1" = "gignadd" ]; then
+# Handle "mmgign" command
+if [ "$1" = "mmgign" ]; then
     for file in $(find * -type l -not -exec grep -q "^{}$" .gitignore \; -print)
     do
         echo $file >> .gitignore
     done
-    
-    exit 0
-fi
-
-
-
-###############################
-# Handle "status" command
-if [ "$1" = "status" ]; then
+# Handle "mmst" command
+elif [ "$1" = "mmst" ]; then
   shift
   if [ -n "$1" ]; then echo "Too many arguments to status command."; exit 1; fi
   while read -d $'\n' module; do
@@ -184,7 +189,8 @@ if [ "$1" = "status" ]; then
       echo
     fi
   done < <(ls -1 "$mm") 
-  exit 0
+else
+    exit 0
 fi
 
 
