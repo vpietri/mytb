@@ -7,9 +7,9 @@
 
 ## Installation
 
-
+```
 ([ -e ~/bin ] || mkdir ~/bin) && cd ~/bin && wget https://raw.github.com/atelierdumarchand/mytb/master/mytb && chmod 777 mytb
-
+```
 
 ## Getting Started
 
