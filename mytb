@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+
+version="0.1.0b"
+module="My ToolBox"
+script=${0##*/}
+usage="\
+$module (v$version)
+
+Global Commands:
+  $script <command> [--force]
+------------------------------
+  gignadd                       add modman files to .gitignore
+  modnew <pattern> <destdir>    extract modules files with the <pattern> to the directory <destdir> (optionnally, create the modman file)
+  
+  status                         check for modman dir with standby files (equivalent to 'modman status')
+  
+  --help             display this help message
+  --version          display the modman script's version  
+  --git              common git command
+  --sh               common sh command
+"
+gitresume="
+
+------------------------------
+
+-- Poser un tag
+git tag -a  -m 'Version '
+
+-- Afficher tous les tags
+git show-ref --tags
+
+-- Afficher tous les fichiers modifiés depuis une révision
+git diff --name-only 82a3e6a090930627bb735f11ff64514d614b3723 HEAD
+ou depuis un tag
+git diff --name-only  HEAD
+
+-- Afficher tous les commits depuis un tag donné
+git log --pretty=oneline --abbrev-commit ..HEAD | grep -v Merge
+
+-- Create local branch from tag. Useful to make a release
+git checkout -b 
+
+-- Following a synchro issue due to a direct file copy
+git add . && git stash && git pull && git stash pop && git st 
+
+
+-- Recherche de terme dans des fichier (ici SEARCH_TERM)
+find . -name "*" | xargs grep 'SEARCH_TERM' | sed "s/[^:]*:\s*//"
+
+-- GIT: Recherche des fichiers supprimés et application de git rm
+git st | grep delete | sed \"s/#\tdeleted:    //\" | xargs git rm
+
+------------------------------
+"
+shresume="
+
+------------------------------
+
+- Pour faire une tabulation en ligne de commande [CTRL]+v et [TAB]
+
+- Filtre sur les prix
+egrep \"PVEU[EIFB]PVSUI      PB\" pv_20121206.org.paq > pv_20121206.paq
+
+- Sort data
+sort -t$'\t' +2 -3 pv.org.paq | uniq > pv.paq
+
+
+- Mass uncompress zip files
+for zipfile in \`ls *.zip\`;do unzip  $zipfile;done
+
+- Extract fields  2 and 47 from file.csv with tab separator
+cut -f2,47 file.csv | tr ':' '\t'
+
+- Find and move files with PATTERN
+find . -name \"PATTERN*\" -exec cp {} /tmp/PATTERN \;
+
+------------------------------
+"
+
+formatEcho(){
+    local exp=$1;
+    local color=$2;
+    if ! [[ $color =~ '^[0-9]$' ]] ; then
+       case $(echo $color | tr '[:upper:]' '[:lower:]') in
+        black) color=0 ;;
+        red) color=1 ;;
+        green) color=2 ;;
+        yellow) color=3 ;;
+        blue) color=4 ;;
+        magenta) color=5 ;;
+        cyan) color=6 ;;
+        white|*) color=7 ;; # white or invalid color
+       esac
+    fi
+    tput setaf $color;
+    echo $exp;
+    tput sgr0;
+}
+
+###########################
+if [ "$1" = "--help" -o "$1" = "" ]; then
+  echo -e "$usage"; exit 0
+###########################
+# Handle "--version" command
+elif [ "$1" = "--version" ]; then
+  echo "$module, version: $version"; exit 0
+elif [ "$1" = "--git" ]; then
+  echo -e "$gitresume" | more; exit 0
+elif [ "$1" = "--sh" ]; then
+  echo -e "$shresume" | more; exit 0
+fi
+
+
+_pwd=$(pwd -P)        # current path
+
+###############################
+# Handle "modnew" command
+if [ "$1" = "modnew" ]; then
+    pattern=$2
+    destdir=$3
+    echo $_pwd
+    if [ ! -z "$destdir" -a -e "$destdir" ]; then
+      [ ! -e "$destdir/$pattern" ] && mkdir $destdir/$pattern
+      find . -iname "*$pattern*" -exec cp -r --parent {} $destdir/$pattern \;
+      echo "# Module $pattern" > $destdir/$pattern/modman
+      for modpath in $(find . -iname "*$pattern*" | sed "s/^\.\///g")
+      do
+        echo "$modpath   $modpath" >> $destdir/$pattern/modman
+      done
+    fi
+    
+    exit 0
+fi
+
+################################
+# modman tools
+################################
+# Find the .modman directory and store parent path in $root
+mm_not_found="Module Manager directory not found."
+root=$_pwd
+while ! [ -d $root/.modman ]; do
+  if [ "$root" = "/" ]; then echo -e $mm_not_found && exit 1; fi
+  cd .. || { echo -e "ERROR: Could not traverse up from $root\n$mm_not_found" && exit 1; }
+  root=$(pwd)
+done
+mm=$root/.modman      # path to .modman
+
+
+###############################
+# Handle "gignadd" command
+if [ "$1" = "gignadd" ]; then
+    for file in $(find * -type l -not -exec grep -q "^{}$" .gitignore \; -print)
+    do
+        echo $file >> .gitignore
+    done
+    
+    exit 0
+fi
+
+
+
+###############################
+# Handle "status" command
+if [ "$1" = "status" ]; then
+  shift
+  if [ -n "$1" ]; then echo "Too many arguments to status command."; exit 1; fi
+  while read -d $'\n' module; do
+    if [ -d "$mm/$module" -a -e "$mm/$module/modman" ]; then
+      cd "$mm/$module"
+      if [ -d "$mm/$module/.git" ]; then
+        gitfiles=(`git status --porcelain`)
+        formatEcho "-- $module ($mm/$module)" green
+        echo "-- ---------------------------------------------"
+        if [ ! "${#gitfiles[*]}" = "0" ]; then
+            git status --porcelain
+        else
+            echo "-- Clean"
+        fi
+      elif [ -d "$mm/$module/.svn" ]; then
+        svn status
+      else
+        echo "Not a git or svn repository."
+      fi
+      echo
+    fi
+  done < <(ls -1 "$mm") 
+  exit 0
+fi
+
+
+
