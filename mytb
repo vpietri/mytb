@@ -10,9 +10,10 @@ Global Commands:
   $script <command> [--force]
 ------------------------------
   modnew <pattern> <destdir>    extract modules files with the <pattern> to the directory <destdir> and create the modman file
+  modman <pattern> <destdir>    create modman file, searching the <pattern> (optionnal default all files) in the directory <destdir> (optional default .)
   
-  mmgign                       add modman files to .gitignore
-  mmst                         check for modman dir with standby files (equivalent to 'modman status')
+  mmgign                        add modman files to .gitignore
+  mmst                          check for modman dir with standby files (equivalent to 'modman status')
   
   --help             display this help message
   --version          display the script's version  
@@ -109,6 +110,24 @@ formatEcho(){
     tput sgr0;
 }
 
+generateModman(){
+    local path;
+    local pattern;
+    
+    if [ $1 ]; then path=$1; else path=.; fi
+    if [ $2 ]; then pattern=*$2*; else pattern=*; fi
+
+
+    echo "Generate  $path/modman"
+    echo "# Module $pattern" > $path/modman
+    for modpath in $(find . -iname "$pattern" | sed "s/^\.\///g" | grep -v "/sql/")
+    do
+        echo "$modpath   $modpath" >> $path/modman
+        formatEcho  $modpath green
+    done
+}
+
+
 ###########################
 if [ "$1" = "--help" -o "$1" = "" ]; then
   echo -e "$usage"; exit 0
@@ -130,18 +149,19 @@ _pwd=$(pwd -P)        # current path
 if [ "$1" = "modnew" ]; then
     pattern=$2
     destdir=$3
-    echo $_pwd
     if [ ! -z "$destdir" -a -e "$destdir" ]; then
       [ ! -e "$destdir/$pattern" ] && mkdir $destdir/$pattern
+      echo "Extract files matching pattern '$pattern' into '$destdir/$pattern'"
       find . -iname "*$pattern*" -exec cp -r --parent {} $destdir/$pattern \;
-      echo "# Module $pattern" > $destdir/$pattern/modman
-      for modpath in $(find . -iname "*$pattern*" | sed "s/^\.\///g")
-      do
-        echo "$modpath   $modpath" >> $destdir/$pattern/modman
-      done
+      
+      generateModman $destdir/$pattern $pattern
+    else
+      echo "Error directory $destdir do not exist or is not writable"
     fi
     
     exit 0
+elif [ "$1" = "modman" ]; then
+    generateModman $2 $3
 fi
 
 ################################
@@ -192,6 +212,4 @@ elif [ "$1" = "mmst" ]; then
 else
     exit 0
 fi
-
-
 
