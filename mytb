@@ -9,6 +9,7 @@ $module (v$version)
 Global Commands:
   $script <command> [--force]
 ------------------------------
+  masspull <pattern>            mass git update all subdirectories with name matching <pattern>
   modnew <pattern> <destdir>    extract modules files with the <pattern> to the directory <destdir> and create the modman file
   modman <pattern> <destdir>    create modman file, searching the <pattern> (optionnal default all files) in the directory <destdir> (optional default .)
   
@@ -113,14 +114,16 @@ formatEcho(){
 generateModman(){
     local path;
     local pattern;
+    local modname;
     
     if [ $1 ]; then path=$1; else path=.; fi
     if [ $2 ]; then pattern=*$2*; else pattern=*; fi
+    if [ $3 ]; then modname=$3; else modname="?"; fi
 
 
     echo "Generate  $path/modman"
-    echo "# Module $pattern" > $path/modman
-    for modpath in $(find . -iname "$pattern" | sed "s/^\.\///g" | grep -v "/sql/")
+    echo "# Module $modname" > $path/modman
+    for modpath in $(find . -path .git -prune -o -iname "$pattern"| sed "s/^\.\///g" | grep -v "/sql/")
     do
         echo "$modpath   $modpath" >> $path/modman
         formatEcho  $modpath green
@@ -161,7 +164,18 @@ if [ "$1" = "modnew" ]; then
     
     exit 0
 elif [ "$1" = "modman" ]; then
-    generateModman $2 $3
+    generateModman $2 $3 $4
+    exit 0
+elif [ "$1" = "masspull" ]; then
+    while read -d $'\n' repopath; do
+        if [ -d $repopath/.git ]; then
+            formatEcho  "Pull in $repopath" yellow
+            cd $repopath && git pull
+        else
+            echo "Not .git repo in $repopath"
+        fi
+    done < <(ls -1 -d $_pwd/*/) 
+    exit 0    
 fi
 
 ################################
