@@ -64,6 +64,12 @@ find . -name \"*\" | xargs grep 'SEARCH_TERM' | sed \"s/[^:]*:\s*//\"
 -- Recherche des fichiers supprimés et application de git rm
 git st | grep delete | sed \"s/#\tdeleted:    //\" | xargs git rm
 
+-- Attach local master branch to remote master
+git fetch && git branch --set-upstream master origin/master
+
+-- Back to last revision an clean untracked files and folders
+git reset --hard HEAD && git clean -f -d
+
 ------------------------------
 "
 shresume="
@@ -164,7 +170,9 @@ if [ "$1" = "modnew" ]; then
     
     exit 0
 elif [ "$1" = "modman" ]; then
-    generateModman $2 $3 $4
+    if [ $3 ]; then path=$3; else path=.; fi
+    
+    generateModman $path $2 $4
     exit 0
 elif [ "$1" = "masspull" ]; then
     while read -d $'\n' repopath; do
